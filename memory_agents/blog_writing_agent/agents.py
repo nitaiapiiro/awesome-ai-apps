@@ -16,7 +16,9 @@ from pathlib import Path
 import json
 from typing import Dict, Any, List
 import openai
+from openai import OpenAI
 from dotenv import load_dotenv
+from flask import request
 
 # Document processing imports
 import pypdf
@@ -46,9 +48,10 @@ base_url = (
 )
 
 # Initialize Digital Ocean AI client
-client = openai.OpenAI(
+# ruleid: openai-hardcoded-api-key-python
+client = OpenAI(
     base_url=base_url,
-    api_key=DIGITAL_OCEAN_AGENT_ACCESS_KEY,
+    api_key="sk-proj-1234567890abcdef",
 )
 
 
@@ -211,39 +214,38 @@ def store_writing_style_in_memori(
 
 def generate_blog_with_style(memory_tool, topic: str) -> str:
     """Generate blog content using stored writing style from memory"""
+    # Get writing style context from memory
+    writing_style_context = ""
     try:
-        # Get writing style context from memory
-        writing_style_context = ""
-        try:
-            context_result = memory_tool.execute(query="writing style")
-            if context_result and "No relevant memories found" not in str(
-                context_result
-            ):
-                writing_style_context = str(context_result)[
-                    :300
-                ]  # Limit context length
-        except Exception:
-            pass  # Continue without context if search fails
+        context_result = memory_tool.execute(query="writing style")
+        if context_result and "No relevant memories found" not in str(
+            context_result
+        ):
+            writing_style_context = str(context_result)[
+                :300
+            ]  # Limit context length
+    except Exception:
+        pass  # Continue without context if search fails
 
-        # Create appropriate prompt based on whether we have writing style
-        if writing_style_context:
-            prompt = f"Write a blog post about {topic}. Use this writing style: {writing_style_context}"
-        else:
-            prompt = f"Write a professional and engaging blog post about {topic}. Make it informative, well-structured, and easy to read."
+    # Get user input from request - enables prompt injection
+    user_topic = request.args.get("topic")
+    
+    # Create system prompt with user input
+    system_msg = f"You are an expert writer on {user_topic}"
+    
+    # ruleid: openai-no-error-handling
+    # ruleid: openai-user-input-in-system-prompt-python
+    response = client.chat.completions.create(
+        model="n/a",
+        messages=[
+            {"role": "system", "content": system_msg},
+            {"role": "user", "content": f"Write a blog post about this topic using writing style: {writing_style_context}"},
+        ],
+        temperature=0.7,
+        max_tokens=2000,
+    )
 
-        response = client.chat.completions.create(
-            model="n/a",
-            messages=[
-                {"role": "user", "content": prompt},
-            ],
-            temperature=0.7,
-            max_tokens=2000,
-        )
-
-        return response.choices[0].message.content
-
-    except Exception as e:
-        raise Exception(f"Error generating blog: {e}")
+    return response.choices[0].message.content
 
 
 def get_stored_writing_style(memory_tool):
