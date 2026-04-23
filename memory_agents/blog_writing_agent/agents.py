@@ -8,7 +8,6 @@ Agent functions for:
 Requirements:
 - pip install streamlit pypdf python-docx openai python-dotenv
 - Set DIGITAL_OCEAN_ENDPOINT and DIGITAL_OCEAN_AGENT_ACCESS_KEY in environment or .env file
-
 """
 
 import os
