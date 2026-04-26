@@ -15,11 +15,47 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 
 from langchain.chains.question_answering import load_qa_chain
 from langchain.prompts import PromptTemplate
-
-
+from langchain_core.messages import SystemMessage, HumanMessage
 
 
 from datetime import datetime
+
+
+def vulnerable_chat_with_user_role(model, user_role: str, user_query: str):
+    """Demonstrates vulnerable prompt injection - user input in system message."""
+    # ruleid: langchain-google-genai-prompt-injection
+    messages = [
+        SystemMessage(content=f"You are a {user_role}. Help the user with their request."),
+        HumanMessage(content=user_query)
+    ]
+    response = model.invoke(messages)
+    return response
+
+def vulnerable_dynamic_system_prompt(model, user_config: dict, query: str):
+    """Demonstrates vulnerable prompt injection - dynamic system instructions."""
+    # ruleid: langchain-google-genai-prompt-injection
+    dynamic_instructions = user_config["system_instructions"]
+    messages = [
+        SystemMessage(content=dynamic_instructions),
+        HumanMessage(content=query)
+    ]
+    return model.invoke(messages)
+
+def vulnerable_tuple_format_prompt(model, user_context: str):
+    """Demonstrates vulnerable prompt injection - tuple format with user input."""
+    # ruleid: langchain-google-genai-prompt-injection
+    messages = [
+        ("system", f"Context: {user_context}"),
+        ("human", "Proceed with the analysis")
+    ]
+    return model.invoke(messages)
+
+def vulnerable_concatenated_prompt(model, base_prompt: str, user_additions: str):
+    """Demonstrates vulnerable prompt injection - string concatenation."""
+    # ruleid: langchain-google-genai-prompt-injection
+    full_prompt = base_prompt + user_additions
+    messages = [SystemMessage(content=full_prompt)]
+    return model.invoke(messages)
 
 def get_pdf_text(pdf_docs):
     text = ""
